@@ -15,20 +15,22 @@ typealias PaymentSheetResultCompletionBlock = ((PaymentSheetResult) -> Void)
 @available(macCatalystApplicationExtension, unavailable)
 extension STPApplePayContext {
 
-    static func create(intent: Intent,
-                       merchantName: String,
-                       configuration: PaymentSheet.ApplePayConfiguration,
-                       completion: @escaping PaymentSheetResultCompletionBlock) -> STPApplePayContext? {
+    static func create(
+        intent: Intent,
+        merchantName: String,
+        configuration: PaymentSheet.ApplePayConfiguration,
+        completion: @escaping PaymentSheetResultCompletionBlock
+    ) -> STPApplePayContext? {
         /// A shim class; ApplePayContext expects a protocol/delegate, but PaymentSheet uses closures.
         class ApplePayContextClosureDelegate: NSObject, STPApplePayContextDelegate {
             let completion: PaymentSheetResultCompletionBlock
             /// Retain this class until Apple Pay completes
             var selfRetainer: ApplePayContextClosureDelegate?
-            let clientSecret: String
+            let clientSecrets: [String]
 
-            init(clientSecret: String, completion: @escaping PaymentSheetResultCompletionBlock) {
+            init(clientSecrets: [String], completion: @escaping PaymentSheetResultCompletionBlock) {
                 self.completion = completion
-                self.clientSecret = clientSecret
+                self.clientSecrets = clientSecrets
                 super.init()
                 self.selfRetainer = self
             }
@@ -37,7 +39,7 @@ extension STPApplePayContext {
                                  didCreatePaymentMethod paymentMethod: STPPaymentMethod,
                                  paymentInformation: PKPayment,
                                  completion: @escaping STPIntentClientSecretCompletionBlock) {
-                completion(clientSecret, nil)
+                completion(clientSecrets)
             }
 
             func applePayContext(_ context: STPApplePayContext, didCompleteWith status: STPPaymentStatus, error: Error?) {
@@ -61,26 +63,28 @@ extension STPApplePayContext {
                                                           currency: paymentIntent.currency)
             let decimalAmount = NSDecimalNumber.stp_decimalNumber(withAmount: paymentIntent.amount, currency: paymentIntent.currency)
             paymentRequest.paymentSummaryItems = [
-                PKPaymentSummaryItem(label: merchantName,
-                                     amount: decimalAmount,
-                                     type: .final),
+                PKPaymentSummaryItem(label: merchantName, amount: decimalAmount, type: .final),
             ]
+
         case .setupIntent:
-            paymentRequest = StripeAPI.paymentRequest(withMerchantIdentifier: configuration.merchantId,
-                                                          country: configuration.merchantCountryCode,
-                                                          currency: "USD") // currency is required but unused
+            paymentRequest = StripeAPI.paymentRequest(
+                withMerchantIdentifier: configuration.merchantId,
+                country: configuration.merchantCountryCode,
+                currency: "USD" // currency is required but unused
+            )
             paymentRequest.paymentSummaryItems = [
                 PKPaymentSummaryItem(label: "\(merchantName)", amount: .one, type: .pending)
             ]
         }
-        let delegate = ApplePayContextClosureDelegate(clientSecret: intent.clientSecret, completion: completion)
+
+        let delegate = ApplePayContextClosureDelegate(clientSecrets: [intent.clientSecret], completion: completion)
         if let applePayContext = STPApplePayContext(paymentRequest: paymentRequest, delegate: delegate) {
             return applePayContext
-        } else {
-            // Delegate only deallocs when Apple Pay completes
-            // Since Apple Pay failed to start, nil it out now
-            delegate.selfRetainer = nil
-            return nil
         }
+
+        // Delegate only deallocs when Apple Pay completes
+        // Since Apple Pay failed to start, nil it out now
+        delegate.selfRetainer = nil
+        return nil
     }
 }

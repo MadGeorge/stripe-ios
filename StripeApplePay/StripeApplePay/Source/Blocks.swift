@@ -17,4 +17,4 @@ public typealias STPBoolBlock = (Bool) -> Void
 /// - Parameters:
 ///   - clientSecret:    The client secret of the PaymentIntent or SetupIntent. See https://stripe.com/docs/api/payment_intents/object#payment_intent_object-client_secret
 ///   - error:                    The error that occurred when creating the Intent, or nil if none occurred.
-public typealias STPIntentClientSecretCompletionBlock = (String?, Error?) -> Void
+public typealias STPIntentClientSecretCompletionBlock = ([String]) -> Void

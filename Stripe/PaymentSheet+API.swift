@@ -42,6 +42,7 @@ extension PaymentSheet {
         switch paymentOption {
         // MARK: Apple Pay
         case .applePay:
+            fatalError("not expected to be here for debugging two payment secrets")
             guard let applePayConfiguration = configuration.applePay,
                 let applePayContext = STPApplePayContext.create(
                     intent: intent,
