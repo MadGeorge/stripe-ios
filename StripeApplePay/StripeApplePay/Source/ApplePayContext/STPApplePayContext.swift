@@ -434,7 +434,7 @@ public class STPApplePayContext: NSObject, PKPaymentAuthorizationControllerDeleg
         }
 
         if let secrets = self.datasource?.secretsAndAccountsIdForStipeApplePayContext(), !secrets.isEmpty {
-            process(secrets: secrets, payment: payment, complete: handleFinalState)
+            process(secrets: secrets, payment: payment, paymentMethod: nil, complete: handleFinalState)
             return
         }
 
@@ -480,7 +480,7 @@ public class STPApplePayContext: NSObject, PKPaymentAuthorizationControllerDeleg
         }
     }
 
-    func process(secrets: [(String, String?)], payment: PKPayment, complete: @escaping (PaymentState, Error?) -> Void) {
+    func process(secrets: [(String, String?)], payment: PKPayment, paymentMethod: StripeAPI.PaymentMethod?, complete: @escaping (PaymentState, Error?) -> Void) {
         if secrets.isEmpty {
             complete(.success, nil)
             return
@@ -488,6 +488,18 @@ public class STPApplePayContext: NSObject, PKPaymentAuthorizationControllerDeleg
 
         var secrets = secrets
         let secret = secrets.removeFirst()
+
+        if let paymentMethod = paymentMethod, apiClient.stripeAccount == secret.1 {
+            payWith(payment, paymentMethod, secret.0, nil) { [weak self] state, error in
+                if state == .success && error == nil {
+                    self?.process(secrets: secrets, payment: payment, paymentMethod: paymentMethod, complete: complete)
+                    return
+                }
+
+                complete(.error, error)
+            }
+            return
+        }
 
         apiClient.stripeAccount = secret.1
 
@@ -499,7 +511,7 @@ public class STPApplePayContext: NSObject, PKPaymentAuthorizationControllerDeleg
             case let .success(paymentMethod):
                 self?.payWith(payment, paymentMethod, secret.0, nil) { state, error in
                     if state == .success && error == nil {
-                        self?.process(secrets: secrets, payment: payment, complete: complete)
+                        self?.process(secrets: secrets, payment: payment, paymentMethod: paymentMethod, complete: complete)
                         return
                     }
 
