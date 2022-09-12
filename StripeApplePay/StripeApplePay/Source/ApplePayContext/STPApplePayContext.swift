@@ -251,10 +251,10 @@ public class STPApplePayContext: NSObject, PKPaymentAuthorizationControllerDeleg
     func _delegateToAppleDelegateMapping() -> [Selector: Selector] {
         // We need this type to disambiguate from the other PKACDelegate.didSelect:handler: method
         typealias pkDidSelectShippingMethodSignature = (
-            (PKPaymentAuthorizationControllerDelegate) -> (
+            (PKPaymentAuthorizationControllerDelegate) -> ((
                 PKPaymentAuthorizationController, PKShippingMethod,
                 @escaping (PKPaymentRequestShippingMethodUpdate) -> Void
-            ) -> Void
+            ) -> Void)?
         )?
         let pk_didSelectShippingMethod = #selector(
             (PKPaymentAuthorizationControllerDelegate.paymentAuthorizationController(
